@@ -1,6 +1,6 @@
 {
   "name": "@coderbabasi/runner",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Runs the CoderBaba agent inside a website-builder sandbox and streams it to the browser",
   "license": "MIT",
   "repository": {
