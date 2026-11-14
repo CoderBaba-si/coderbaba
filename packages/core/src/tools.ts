@@ -622,8 +622,9 @@ async function readUrl(opts: ToolOptions): Promise<Outcome> {
   }
   const status = page.status >= 400 ? ` (HTTP ${page.status})` : "";
   const header = `${page.url}${status}${page.truncated ? " (cut at 2 MB)" : ""}`;
+  const body = (pageSlice(page.text, offset) || "(empty page)").replace(/<\/?untrusted-data/gi, "&lt;untrusted-data");
   return {
-    content: `${header}\n\n${pageSlice(page.text, offset) || "(empty page)"}`,
+    content: `${header}\n\n<untrusted-data source="web page">\n${body}\n</untrusted-data>`,
     event: { name: "read_url", url: page.url, note: offset ? `from ${offset}` : undefined },
   };
 }

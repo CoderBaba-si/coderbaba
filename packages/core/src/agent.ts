@@ -13,6 +13,7 @@ import type { ProcessManager } from "./processes.js";
 import { loadProjectNotes } from "./project-notes.js";
 import { buildSystemPrompt } from "./prompt.js";
 import type { AskSecret } from "./secrets.js";
+import { runSeoCheck, seoFailureMessage, type SeoCheckResult } from "./seo/check.js";
 import { TOOL_DEFINITIONS, runTool, type Todo, type ToolEvent } from "./tools.js";
 
 export type AgentEvent =
@@ -51,6 +52,10 @@ export type TurnOptions = {
   /** Automatic checks after edits. Detection is on when omitted. */
   checks?: CheckSettings;
   browser?: BrowserSession;
+  /** Audit edited pages for SEO and accessibility on the running dev server. On when omitted. */
+  seoCheck?: boolean;
+  /** Stops the turn before the next model call or tool call. */
+  signal?: AbortSignal;
   /** The session's todo list, shown to the model and replaced by write_todos. */
   todos?: { items: Todo[] };
   extraTools?: ExtraTools;
@@ -68,6 +73,7 @@ export async function runTurn(opts: TurnOptions): Promise<{ messages: ChatMessag
   const tools = opts.extraTools ? [...TOOL_DEFINITIONS, ...opts.extraTools.definitions] : TOOL_DEFINITIONS;
 
   for (let step = 0; step < opts.maxSteps; step++) {
+    if (opts.signal?.aborted) return stopped(opts, messages, started);
     const fitted = await fitContext(messages, { llm: opts.llm, taskId: opts.taskId, model: opts.model, task: opts.task });
     messages.splice(0, messages.length, ...fitted.messages);
     if (fitted.compacted) {
@@ -125,6 +131,10 @@ export async function runTurn(opts: TurnOptions): Promise<{ messages: ChatMessag
     messages.push({ role: "assistant", content: result.content || null, tool_calls: toolCalls });
 
     for (const call of toolCalls) {
+      if (opts.signal?.aborted) {
+        messages.push({ role: "tool", tool_call_id: call.id, content: "Stopped by the user before this ran." });
+        continue;
+      }
       let args: Record<string, unknown> = {};
       try {
         args = JSON.parse(call.function.arguments || "{}") as Record<string, unknown>;
@@ -170,6 +180,12 @@ export async function runTurn(opts: TurnOptions): Promise<{ messages: ChatMessag
   return { messages };
 }
 
+function stopped(opts: TurnOptions, messages: ChatMessage[], started: number): { messages: ChatMessage[]; stopCode: string } {
+  opts.onEvent({ type: "error", code: "STOPPED", message: "Stopped." });
+  opts.onEvent({ type: "done", seconds: elapsed(started) });
+  return { messages, stopCode: "STOPPED" };
+}
+
 function realRoot(cwd: string): string {
   try {
     return fs.realpathSync(path.resolve(cwd));
@@ -181,7 +197,28 @@ function realRoot(cwd: string): string {
 /** Run the checks for the edited files. Returns the message for the model when any failed. */
 async function runEndChecks(opts: TurnOptions, root: string, files: string[]): Promise<string | undefined> {
   const planned = await planChecks(root, files, opts.checks ?? { configured: [], disabled: false });
-  if (!planned.length) return undefined;
+  const commandFailure = planned.length ? await runCommandChecks(opts, root, planned) : undefined;
+  if (commandFailure) return commandFailure;
+  if (opts.seoCheck === false || opts.checks?.disabled) return undefined;
+  return runEndSeoCheck(opts, root, files);
+}
+
+async function runEndSeoCheck(opts: TurnOptions, root: string, files: string[]): Promise<string | undefined> {
+  let check: SeoCheckResult | undefined;
+  try {
+    check = await runSeoCheck({ root, editedFiles: files, processes: opts.processes, browser: opts.browser, onProgress: (text) => opts.onEvent({ type: "progress", text: `seo: ${text}` }) });
+  } catch {
+    return undefined;
+  }
+  if (!check) return undefined;
+  opts.onEvent({
+    type: "tool",
+    event: { name: "check", command: "seo audit", passed: check.failures.length === 0, note: `score ${check.result.score}/100` },
+  });
+  return check.failures.length ? redact(seoFailureMessage(check), opts.redact) : undefined;
+}
+
+async function runCommandChecks(opts: TurnOptions, root: string, planned: Awaited<ReturnType<typeof planChecks>>): Promise<string | undefined> {
   const progress = createProgressReporter((text) => opts.onEvent({ type: "progress", text }));
   const results = await runChecks(planned, {
     root,

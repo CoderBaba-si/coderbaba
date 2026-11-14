@@ -18,6 +18,13 @@ import {
   INIT_TASK,
   NOTES_FILE,
   SecurityStore,
+  SeoStore,
+  runSeoCite,
+  runSeoDiff,
+  runSeoFix,
+  runSeoScan,
+  seoStatusTable,
+  type SeoRunResult,
   isLoginCode,
   runSecurityDiff,
   runSecurityFix,
@@ -98,6 +105,11 @@ const HELP = [
   "  /security fix <id>       fix a finding, run checks, and check the fix",
   "  /security diff [base]    review uncommitted changes, or your branch against base",
   "  /security status         list findings",
+  "/seo       audit the site for search engines, AI answers (GEO and AEO), speed and accessibility; writes SEO_REPORT.md",
+  "  /seo fix <id>            fix a finding and re-check the page",
+  "  /seo diff [base]         audit only pages changed in uncommitted work, or your branch against base",
+  "  /seo status              list findings",
+  "  /seo cite                check whether ChatGPT, Perplexity and Gemini cite your site (needs login)",
   "/todos     show this chat's todo list",
   "/export    save this chat as a Markdown file in the project",
   "/ps        list background processes (dev servers, databases)",
@@ -184,7 +196,7 @@ function toolLine(tool: ToolEvent): Line | null {
           detail: `${tool.command ?? ""} found high-severity issues${tool.cwd ? ` in ${tool.cwd}/` : ""}. Type /security for details.`,
         };
       }
-      return { kind: "tool", label: tool.passed ? "Checked" : "Check failed", detail: `${tool.command ?? ""}${where}` };
+      return { kind: "tool", label: tool.passed ? "Checked" : "Check failed", detail: `${tool.command ?? ""}${where}${tool.note ? ` (${tool.note})` : ""}` };
     case "edit_file":
       return {
         kind: "tool",
@@ -562,6 +574,87 @@ export function App() {
     [auth, cwd, direct, eventHandler, model, push, refreshUsage, startBusy, turnBase],
   );
 
+  const runSeo = useCallback(
+    async (sub: string | undefined, rest: string) => {
+      const current = session.current;
+      if (!current) return;
+      const action = sub?.toLowerCase() ?? "scan";
+      if (action === "status") {
+        const store = await SeoStore.open(cwd);
+        push({ kind: "info", text: seoStatusTable(store.findings()) });
+        return;
+      }
+      if (!["scan", "fix", "diff", "cite"].includes(action)) {
+        push({ kind: "error", text: `Unknown option ${sub}. Use /seo, /seo fix <id>, /seo diff, /seo status, or /seo cite.` });
+        return;
+      }
+      if (action === "fix" && !rest) {
+        push({ kind: "info", text: "Which one? Type /seo fix O1. /seo status lists the findings." });
+        return;
+      }
+      const currentAuth = auth ?? (await readAuth());
+      const label = ["/seo", sub, rest].filter(Boolean).join(" ");
+      push({ kind: "user", text: label });
+      if (action === "cite") {
+        if (currentAuth?.type !== "user") {
+          setMode({ kind: "email", reason: "AI citation checks need a free login. Enter your email" });
+          return;
+        }
+        setMode({ kind: "busy" });
+        setTurnStartedAt(Date.now());
+        setProgress("asking AI search engines about your business");
+        try {
+          const result = await runSeoCite({ cwd, token: currentAuth.token, args: rest || undefined });
+          push({ kind: "info", text: result.summary });
+        } catch (error) {
+          push({ kind: "error", text: error instanceof Error ? error.message : "The citation check failed." });
+        }
+        setProgress("");
+        setMode({ kind: "chat" });
+        return;
+      }
+      if (action === "fix" && !direct && !currentAuth) {
+        push({ kind: "info", text: "CoderBaba couldn't start a free session. Check your connection and try again, or type /login" });
+        return;
+      }
+      if (!current.title) current.title = label;
+      startBusy();
+      const { onEvent, flush } = eventHandler();
+      const base = turnBase(currentAuth, onEvent);
+      let result: SeoRunResult;
+      try {
+        if (action === "scan") {
+          push({ kind: "info", text: "Auditing this site for search engines, AI answers, speed and accessibility. It reads the pages and doesn't change files." });
+          result = await runSeoScan(base, { onProgress: (text) => setProgress(text) });
+        } else if (action === "fix") {
+          result = await runSeoFix(base, rest);
+        } else {
+          result = await runSeoDiff(base, rest || undefined);
+        }
+      } catch (error) {
+        flush();
+        push({ kind: "error", text: error instanceof Error ? error.message : "The SEO run failed." });
+        setMode({ kind: "chat" });
+        return;
+      }
+      flush();
+      setProgress("");
+      push({ kind: "info", text: result.summary });
+      if (result.ranModel) {
+        current.messages.push({ role: "user", content: label }, { role: "assistant", content: result.summary });
+        current.model = model;
+        await saveSession(current);
+        await refreshUsage(currentAuth);
+      }
+      if (result.stopCode && isLoginCode(result.stopCode)) {
+        setMode({ kind: "email", reason: "Enter your email to keep going (still free)" });
+        return;
+      }
+      setMode({ kind: "chat" });
+    },
+    [auth, cwd, direct, eventHandler, model, push, refreshUsage, startBusy, turnBase],
+  );
+
   const sendCode = useCallback(
     async (email: string, retry?: string) => {
       try {
@@ -764,6 +857,9 @@ export function App() {
         case "/security":
           await runSecurity(arg, extra);
           return;
+        case "/seo":
+          await runSeo(arg, raw.trim().split(/\s+/).slice(2).join(" "));
+          return;
         case "/compact": {
           const current = session.current;
           const currentAuth = auth ?? (await readAuth());
@@ -812,7 +908,7 @@ export function App() {
           push({ kind: "error", text: `Unknown command ${name}. Type /help` });
       }
     },
-    [auth, cwd, direct, model, push, quit, runSecurity, runTask, showAllowRules],
+    [auth, cwd, direct, model, push, quit, runSecurity, runSeo, runTask, showAllowRules],
   );
 
   const runBang = useCallback(

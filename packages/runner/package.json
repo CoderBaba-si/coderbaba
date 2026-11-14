@@ -1,0 +1,48 @@
+{
+  "name": "@coderbabasi/runner",
+  "version": "0.1.0",
+  "description": "Runs the CoderBaba agent inside a website-builder sandbox and streams it to the browser",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CoderBaba-si/coderbaba.git",
+    "directory": "packages/runner"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "coderbaba-runner": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@coderbabasi/core": "workspace:*",
+    "@coderbabasi/shared": "workspace:*",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

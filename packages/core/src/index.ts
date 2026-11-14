@@ -54,6 +54,9 @@ export type { CheckResult, CheckSettings, PlannedCheck, RunChecksOptions } from 
 export { runTurn } from "./agent.js";
 export type { AgentEvent, ExtraTools, TurnOptions } from "./agent.js";
 export * from "./security/index.js";
+export * from "./seo/index.js";
+export { AI_CRAWLERS, analyzeHtml, auditErrors, blockedCrawlers, describeAudit, findSitemapUrls, groupLabel, runSeoAudit, scoreIssues, visibleText } from "./seo-audit.js";
+export type { FetchText, PageFacts, SeoAuditOptions, SeoAuditResult, SeoGroup, SeoIssue, SeoSeverity } from "./seo-audit.js";
 
 export function formatStatus(input: {
   modelLabel: string;

@@ -1,0 +1,19 @@
+name: Trigger builder evals
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/core/src/prompt.ts"
+      - "packages/core/src/seo-audit.ts"
+      - "packages/runner/**"
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.CLOUD_DISPATCH_TOKEN }}
+    steps:
+      - name: Ask coderbaba-cloud to run the eval subset
+        if: env.GH_TOKEN != ''
+        run: gh api repos/CoderBaba-si/coderbaba-cloud/dispatches -f event_type=builder-prompt-changed -f "client_payload[sha]=${{ github.sha }}"

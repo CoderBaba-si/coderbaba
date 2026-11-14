@@ -54,6 +54,9 @@ importers:
       '@coderbabasi/shared':
         specifier: workspace:*
         version: link:../shared
+      axe-core:
+        specifier: ^4.10.3
+        version: 4.14.0
       playwright-core:
         specifier: ^1.65.0
         version: 1.65.0
@@ -61,6 +64,31 @@ importers:
       '@types/node':
         specifier: ^20.19.43
         version: 20.19.43
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@20.19.43)(tsx@4.23.15)
+
+  packages/runner:
+    dependencies:
+      '@coderbabasi/core':
+        specifier: workspace:*
+        version: link:../core
+      '@coderbabasi/shared':
+        specifier: workspace:*
+        version: link:../shared
+      ws:
+        specifier: ^8.18.3
+        version: 8.22.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.43
+        version: 20.19.43
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.2
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -509,6 +537,9 @@ packages:
   '@types/react@18.3.31':
     resolution: {integrity: sha512-vfEqpXTvwT91yhmwdfouStN2hSKwTvyRs8qpLfADyrq/kxDw0hZM7Wk9Ug1FELj8hIby+S/+kQCSRFF32nv2Qw==}
 
+  '@types/ws@8.18.2':
+    resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
+
   '@vitest/expect@3.2.7':
     resolution: {integrity: sha512-E8eBXaKibuvH2pSZErOjdVb5vF4PbKYcrnluBTYxEk1l/VhhwZg1kZQsdtjq+CsF5CFydf2Rdkz7jDHKSisi3w==}
 
@@ -575,6 +606,10 @@ packages:
   auto-bind@5.0.1:
     resolution: {integrity: sha512-ooviqdwwgfIfNmDwo94wlshcdzfO64XV0Cg6oDsDYBJfITDz1EngD2z7DkbvCWn+XIMsIqW27sEVF6qcpJrRcg==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
+  axe-core@4.14.0:
+    resolution: {integrity: sha512-9WTZxEjsZ7b13TH8JPmbV2z8CHbl80/2hm3XPEG4JgNdQLK81IBRXmSxHfMAOkSqQeRxT/0dwNDz2GOm3zzpcQ==}
+    engines: {node: '>=4'}
 
   better-path-resolve@1.0.0:
     resolution: {integrity: sha512-pbnl5XzGBdrFU/wT4jqmJVPn2B6UHPBOhzMQkY/SPUPB6QtUXtmBHBIwCbXJol93mOpGMnQyP/+BB19q04xj7g==}
@@ -1615,6 +1650,10 @@ snapshots:
       '@types/prop-types': 15.7.15
       csstype: 3.2.3
 
+  '@types/ws@8.18.2':
+    dependencies:
+      '@types/node': 20.19.43
+
   '@vitest/expect@3.2.7':
     dependencies:
       '@types/chai': 5.2.3
@@ -1680,6 +1719,8 @@ snapshots:
   assertion-error@2.0.1: {}
 
   auto-bind@5.0.1: {}
+
+  axe-core@4.14.0: {}
 
   better-path-resolve@1.0.0:
     dependencies:

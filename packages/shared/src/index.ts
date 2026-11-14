@@ -11,6 +11,7 @@ export const ErrorCodes = {
   UNAUTHORIZED: "UNAUTHORIZED",
   BAD_REQUEST: "BAD_REQUEST",
   OFFLINE: "OFFLINE",
+  GEO_LIMIT: "GEO_LIMIT",
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
@@ -113,6 +114,43 @@ export type UsageResponse =
       daily: DailyUsage;
       monthly: { usedUsd: number; limitUsd: number; resetAt: string };
     };
+
+/** The business an AI citation check is about. */
+export type GeoBusiness = {
+  name: string;
+  category: string;
+  location: string;
+  /** The site's domain or URL; a citation counts when a source matches it. */
+  website: string;
+};
+
+export type GeoEngine = "perplexity" | "openai" | "gemini";
+
+export type GeoCiteRequest = {
+  business: GeoBusiness;
+  /** Questions to ask; generated from the business when omitted. */
+  prompts?: string[];
+  engines?: GeoEngine[];
+};
+
+export type GeoCitation = {
+  prompt: string;
+  engine: GeoEngine;
+  cited: boolean;
+  citedUrl?: string;
+  /** 1-based position of the site among the answer's sources. */
+  position?: number;
+  /** Other domains the answer cited instead. */
+  competitors: string[];
+};
+
+export type GeoCiteResponse = {
+  checkedAt: string;
+  results: GeoCitation[];
+  /** Share of prompt and engine pairs that cited the site, 0 to 1. */
+  citationRate: number;
+  checksLeftToday: number;
+};
 
 export function isErrorResponse(value: unknown): value is ErrorResponse {
   if (!value || typeof value !== "object") return false;

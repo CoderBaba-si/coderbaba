@@ -17,6 +17,7 @@ No sign-in, API key, credit card, or config file needed. You get 1,000 free task
 - [Who CoderBaba is for](#who-coderbaba-is-for)
 - [What CoderBaba can do](#what-coderbaba-can-do)
 - [CoderBaba Security](#coderbaba-security)
+- [CoderBaba SEO](#coderbaba-seo)
 - [Supported stacks](#supported-stacks)
 - [Models](#models)
 - [Safety and permissions](#safety-and-permissions)
@@ -114,6 +115,27 @@ Findings are stored in `.coderbaba/security/`, which is kept out of git. Secret 
 
 **Secure by default:** even without `/security`, CoderBaba writes code with parameterized queries, hashed passwords (bcrypt, argon2 or Django auth), auth checks on routes that change data, and request validation (zod, express-validator or DRF serializers).
 
+## CoderBaba SEO
+
+`/seo` audits your site for **search engines (SEO)**, **AI answers such as ChatGPT, Perplexity and Google AI Overviews (GEO and AEO)**, **speed**, and **accessibility**, then helps you fix what it finds. It works with any framework: it reads the pages from your running dev server, or from your build folder (`dist/`, `out/`, `build/`).
+
+| Command | What it does |
+| --- | --- |
+| `/seo` | Crawls the site and writes `SEO_REPORT.md` with a score and numbered findings (`O1`, `O2`...), grouped into Search, AI answers, Performance and Accessibility. |
+| `/seo fix <id>` | Fixes one finding, then re-checks that page. |
+| `/seo diff [base]` | Audits only the pages changed in your uncommitted work, or your branch against a base branch. |
+| `/seo status` | Lists open findings. |
+| `/seo cite` | Asks ChatGPT, Perplexity and Gemini questions about your business and records whether they cite your site, and who they cite instead. Needs a free login; one check a day. |
+
+What it checks:
+- **Pages that are empty before JavaScript runs.** Most AI crawlers don't run JavaScript, so a client-rendered React app looks blank to them. This is usually the most important finding.
+- Titles, meta descriptions, one H1 per page, canonical URLs, `noindex`, Open Graph tags, broken internal links, thin pages, and duplicate titles.
+- Structured data (JSON-LD), question-style headings that AI answers can quote, `llms.txt`, and AI crawlers (GPTBot, PerplexityBot, ClaudeBot, Google-Extended) blocked in `robots.txt`.
+- Missing `sitemap.xml` or `robots.txt`, slow pages, render-blocking scripts, and images without sizes.
+- WCAG 2.2 AA accessibility with [axe-core](https://github.com/dequelabs/axe-core): contrast, labels, alt text, and more (needs Chrome or Edge, or `npx playwright install chromium`).
+
+After you edit page files while a dev server is running, CoderBaba runs a quick SEO check on those pages automatically and fixes clear errors, the same way it fixes type errors.
+
 ## Supported stacks
 
 CoderBaba works with any project it can read and run. It has built-in, tested setup steps for:
@@ -171,6 +193,7 @@ Pick a model with `/model`. Contributors can also bring their own [OpenRouter](h
 | `/compact` | summarize the chat so far to free up room |
 | `/init` | write `AGENTS.md`, notes that help CoderBaba understand this project |
 | `/security` | scan this project for security issues (see [CoderBaba Security](#coderbaba-security)) |
+| `/seo` | audit the site for search, AI answers, speed and accessibility (see [CoderBaba SEO](#coderbaba-seo)) |
 | `/todos` | show this chat's todo list |
 | `/export` | save this chat as a Markdown file in the project |
 | `/ps`, `/stop`, `/restart` | list, stop or restart background processes such as dev servers |
